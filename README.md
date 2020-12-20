@@ -6,7 +6,7 @@ These notebooks, although mostly code, also mention the nuanced features, often 
 
 ## Transformer for Sequence Classification
 
-A basic introductory notebook consisting of the original [RoBERTa initialized version](https://github.com/deterministic-algorithms-lab/NLP-Journey/blob/main/classification/basic_transformer.ipynb) and [randomly initialized version](https://github.com/deterministic-algorithms-lab/NLP-Journey/blob/main/classification/transformer_to_pretrain.ipynb)
+A basic introductory notebook consisting of the original [RoBERTa initialized version](https://github.com/deterministic-algorithms-lab/NLP-Journey/blob/main/classification/basic_transformer.ipynb) and [randomly initialized version](https://github.com/deterministic-algorithms-lab/NLP-Journey/blob/main/classification/transformer_to_pretrain.ipynb) .
 
 ## Transformers for Language Modelling Tasks
 
