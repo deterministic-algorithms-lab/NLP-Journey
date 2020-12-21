@@ -41,7 +41,8 @@ def mask_batch_mlm(key, config, batch_token_ids):
 def mask_batch_clm(key, config, batch_token_ids):
     """
     For CLM. Randomly masks each sequence in batch, after a certain length.
-    First mask the logits then use with logits[:,:-1].
+    First mask the logits, then use with logits[:,:-1].
+    This will lead to similar loss for MLM and CLM. You can also use a scaling factor, instead.
     """
     lengths = jnp.sum(batch_token_ids!=config['pad_id'], axis=-1) 
 

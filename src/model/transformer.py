@@ -4,13 +4,15 @@ import jax
 
 class TransformerBlock(hk.Module):
 
-    def __init__(self, config):
+    def __init__(self, config, is_autoregressive=False):
         super().__init__()
         self.config = config
-
+        self.is_autoregressive = is_autoregressive
+    
     def __call__(self, x, mask, training = False):
 
-        attention_output = MultiHeadAttention(self.config)(x, mask, training=training)
+        attention_output = MultiHeadAttention(self.config, 
+                                              self.is_autoregressive)(x, x, mask, training=training)
         
         residual = attention_output+x
 
@@ -30,16 +32,22 @@ class TransformerBlock(hk.Module):
 
 
 class MultiHeadAttention(hk.Module):
-    def __init__(self, config):
+    def __init__(self, config, is_autoregressive=False):
         super().__init__()
         self.config = config
-
+        self.is_autoregressive = is_autoregressive
+    
     def _split_into_heads(self, x):
         return jnp.reshape(x, [x.shape[0], x.shape[1], self.config['n_heads'], x.shape[2]//self.config['n_heads']])
-
-    def __call__(self, x, mask, training=False):
+    
+    def get_attn_mask(self, seq_len):
+        mask = jnp.ones([seq_len, seq_len])
+        mask = jnp.triu(mask)
+        return mask*-2**32
+    
+    def __call__(self, x, y, pad_mask, training=False):
         
-        queries = hk.Linear(output_size=self.config['d_model'])(x)
+        queries = hk.Linear(output_size=self.config['d_model'])(y)
         
         keys = hk.Linear(output_size=self.config['d_model'])(x)
         
@@ -49,13 +57,19 @@ class MultiHeadAttention(hk.Module):
         keys = self._split_into_heads(keys)
         values = self._split_into_heads(values)
 
-        attention_logits = jnp.einsum('bsnh,btnh->bnst', queries, keys)
+        attention_logits = jnp.einsum('btnh,bsnh->bnts', queries, keys)
         attention_logits /= np.sqrt(queries.shape[-1])
 
         attention_logits += jnp.reshape(mask*-2**32, [mask.shape[0],1,1,mask.shape[1]])
+        
+        if self.is_autoregressive:
+            attention_logits += self.get_attn_mask(y.shape[1])
+
         attention_weights = jax.nn.softmax(attention_logits, axis=-1)
-        per_head_attention_output = jnp.einsum('btnh,bnst->bsnh', values, attention_weights)
-        attention_output = jnp.reshape(per_head_attention_output, [per_head_attention_output.shape[0], per_head_attention_output.shape[1], -1])
+        per_head_attention_output = jnp.einsum('bsnh,bnts->btnh', values, attention_weights)
+        
+        attention_output = jnp.reshape(per_head_attention_output, 
+                                       [per_head_attention_output.shape[0], per_head_attention_output.shape[1], -1])
 
         attention_output = hk.Linear(output_size=self.config['d_model'])(attention_output)
         
@@ -95,13 +109,19 @@ class TransformerMLP(hk.Module):
 
 class TransformerFeaturizer(hk.Module):
     
-    def __init__(self, config):
+    def __init__(self, config, is_autoregressive=False):
         super().__init__()
         self.config = config
+        self.is_autoregressive = is_autoregressive
 
     def __call__(self, token_ids, training=False):
         x = Embedding(self.config)(token_ids, training=training)
-        mask = (token_ids==self.config['mask_id']).astype(jnp.float32)
+        
+        mask = (jnp.bitwise_or(token_ids==self.config['pad_id'], 
+                               token_ids==self.config['mask_id'])).astype(jnp.float32)
+    
         for layer_num in range(self.config['n_layers']):
-            x = TransformerBlock(config)(x,mask,training)
+            x = TransformerBlock(config, 
+                                 self.is_autoregressive)(x,mask,training)
+        
         return x
