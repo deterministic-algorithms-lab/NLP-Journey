@@ -5,7 +5,7 @@ from tokenizers.trainers import BpeTrainer
 from tokenizers.processors import TemplateProcessing
 
 
-class get_tokenizer():
+class LM_Tokenizer:
     
     def __init__(self, config, data_files):
         self.tokenizer = Tokenizer(BPE())
