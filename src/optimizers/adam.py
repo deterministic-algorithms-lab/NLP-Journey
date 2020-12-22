@@ -2,6 +2,7 @@ import haiku as hk
 import jax.numpy as jnp
 import jax
 import optax
+import numpy as np
 
 def make_lr_schedule(warmup_percentage, total_steps):
     

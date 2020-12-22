@@ -12,15 +12,14 @@ class LM_Tokenizer:
         self.tokenizer.pre_tokenizer = Whitespace()
         self.trainer = BpeTrainer(special_tokens=['<s>', '</s>', '<unk>', '<pad>', '<mask>'])
         self.config = config
-        self.set_up_tokenizer()
-    
+
     def train_tokenizer(self, data_files=None, binary_iterator=None, str_iter=None):
         
         if data_files is not None:
             self.tokenizer.train(self.trainer, data_files)
         
         else:
-            str_iter = str_iter is str_iter is not None else self.make_str_iter(binary_iterator)
+            str_iter = str_iter if str_iter is not None else self.make_str_iter(binary_iterator)
             self.tokenizer.train_from_iterator(trainer=self.trainer, iterator=str_iter)
         
         self.set_up_tokenizer()
@@ -59,3 +58,10 @@ class LM_Tokenizer:
         else :
             lis = [ (seq1,seq2) for seq1, seq2 in zip( self.decode_to_str(batch1), self.decode_to_str(batch2) ) ]
             return self.tokenizer.encode_batch(lis)
+    
+    def get_token_ids(self, token_encoding):
+        return [elem.ids for elem in token_encoding]
+    
+    def get_lang_ids(self, token_encoding):
+        return[elem.type_ids for elem in token_encoding]
+

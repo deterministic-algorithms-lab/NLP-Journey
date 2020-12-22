@@ -1,8 +1,9 @@
 import jax
 import jax.numpy as jnp
 import random
+from functools import partial
 
-@jax.jit
+@partial(jax.jit, static_argnums=(1,))
 def mask_batch_mlm(key, config, batch_token_ids):
     """
     Random replacement of tokens with mask or other tokens from vocabulary.

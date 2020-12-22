@@ -1,7 +1,7 @@
 import haiku as hk
 import jax.numpy as jnp
 import jax
-
+import numpy as np
 
 class Embedding(hk.Module):
     
@@ -83,4 +83,4 @@ class LanguageEmbeddings(hk.Module):
     def __call__(self, lang_ids):
 
         return hk.Embed(vocab_size=len(self.config['lang2id'])+1, 
-                        embed_dim=self.confid['d_model'])(lang_ids)
+                        embed_dim=self.config['d_model'])(lang_ids)

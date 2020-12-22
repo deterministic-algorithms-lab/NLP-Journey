@@ -1,6 +1,7 @@
 import haiku as hk
 import jax.numpy as jnp
 import jax
+from src.model.embeddings import Embedding
 
 class TransformerBlock(hk.Module):
 
@@ -43,7 +44,7 @@ class MultiHeadAttention(hk.Module):
         mask = jnp.triu(mask, k=1)
         return mask*-2**32
     
-    def __call__(self, x, y, pad_mask, training=False, is_autoregressive=False):
+    def __call__(self, x, y, mask, training=False, is_autoregressive=False):
         
         queries = hk.Linear(output_size=self.config['d_model'])(y)
         
@@ -56,7 +57,7 @@ class MultiHeadAttention(hk.Module):
         values = self._split_into_heads(values)
 
         attention_logits = jnp.einsum('btnh,bsnh->bnts', queries, keys)
-        attention_logits /= np.sqrt(queries.shape[-1])
+        attention_logits /= jnp.sqrt(queries.shape[-1])
 
         attention_logits += jnp.reshape(mask*-2**32, [mask.shape[0],1,1,mask.shape[1]])
         
@@ -118,7 +119,7 @@ class TransformerFeaturizer(hk.Module):
                                token_ids==self.config['mask_id'])).astype(jnp.float32)
     
         for layer_num in range(self.config['n_layers']):
-            x = TransformerBlock(config)(x,mask,
+            x = TransformerBlock(self.config)(x,mask,
                                          training=training,is_autoregressive=is_autoregressive)
         
         return x
