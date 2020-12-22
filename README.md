@@ -10,3 +10,10 @@ A basic introductory notebook consisting of the original [RoBERTa initialized ve
 
 ## Transformers for Language Modelling Tasks
 
+Here we realise the need for restructuring the code, and correspondingly, place all the code component-wise in ```src/``` . The new things we code over the original implementation are: 
+* The masking function for MLM [here](https://github.com/deterministic-algorithms-lab/NLP-Journey/blob/main/src/Tokenizers/masking_utils.py#L6),
+* A [HuggingFace Tokenizers](https://github.com/huggingface/tokenizers) based tokenizer, [here](https://github.com/deterministic-algorithms-lab/NLP-Journey/blob/main/src/Tokenizers/hf_tokenizer.py)
+* A Language Embedding for TLM task, [here](https://github.com/deterministic-algorithms-lab/NLP-Journey/blob/81f7a7568db6676d561aaf7f579f8af99c99b28a/src/model/embeddings.py#L77). 
+* Additionally, we include an option to make the transformer auto-regressive and add a mask for the same, [here](https://github.com/deterministic-algorithms-lab/NLP-Journey/blob/81f7a7568db6676d561aaf7f579f8af99c99b28a/src/model/transformer.py#L64). This is needed for CLM.
+
+The final notebook can be found [here](https://github.com/deterministic-algorithms-lab/NLP-Journey/blob/main/LanguageModelling/CLM_MLM_TLM.ipynb).
