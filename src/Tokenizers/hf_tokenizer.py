@@ -7,13 +7,29 @@ from tokenizers.processors import TemplateProcessing
 
 class LM_Tokenizer:
     
-    def __init__(self, config, data_files):
+    def __init__(self, config):
         self.tokenizer = Tokenizer(BPE())
         self.tokenizer.pre_tokenizer = Whitespace()
         self.trainer = BpeTrainer(special_tokens=['<s>', '</s>', '<unk>', '<pad>', '<mask>'])
-        self.tokenizer.train(self.trainer, data_files)
         self.config = config
         self.set_up_tokenizer()
+    
+    def train_tokenizer(self, data_files=None, binary_iterator=None, str_iter=None):
+        
+        if data_files is not None:
+            self.tokenizer.train(self.trainer, data_files)
+        
+        else:
+            str_iter = str_iter is str_iter is not None else self.make_str_iter(binary_iterator)
+            self.tokenizer.train_from_iterator(trainer=self.trainer, iterator=str_iter)
+        
+        self.set_up_tokenizer()
+    
+    def make_str_iter(self, binary_iterator):
+        def str_iter():
+            for batch in binary_iterator:
+                yield self.decode_to_str(batch)
+        return str_iter()
     
     def set_up_tokenizer(self):
         self.tokenizer.enable_padding(pad_id=self.tokenizer.token_to_id('<pad>'),
@@ -21,8 +37,8 @@ class LM_Tokenizer:
         
         self.tokenizer.enable_truncation(self.config['max_length']-1)
 
-        self.tokenizer.post_processor = TemplateProcessing(single = "<s> $A </s>",
-                                                           pair = "<s>:2 $A:0 </s>:2 $B:1 </s>:2",
+        self.tokenizer.post_processor = TemplateProcessing(single = "<s>:1 $A:1 </s>:1",
+                                                           pair = "<s>:1 $A:1 </s>:1 </s>:2 $B:2 </s>:2",
                                                            special_tokens=[('<s>',1), ('</s>',2)])
 
     def decode_to_str(self, batch_text) :

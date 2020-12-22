@@ -4,15 +4,14 @@ import jax
 
 class TransformerBlock(hk.Module):
 
-    def __init__(self, config, is_autoregressive=False):
+    def __init__(self, config):
         super().__init__()
         self.config = config
-        self.is_autoregressive = is_autoregressive
     
-    def __call__(self, x, mask, training = False):
+    def __call__(self, x, mask, training = False, is_autoregressive=False):
 
-        attention_output = MultiHeadAttention(self.config, 
-                                              self.is_autoregressive)(x, x, mask, training=training)
+        attention_output = MultiHeadAttention(self.config)(x, x, mask,
+                                                           training=training, is_autoregressive=is_autoregressive)
         
         residual = attention_output+x
 
@@ -32,10 +31,9 @@ class TransformerBlock(hk.Module):
 
 
 class MultiHeadAttention(hk.Module):
-    def __init__(self, config, is_autoregressive=False):
+    def __init__(self, config):
         super().__init__()
         self.config = config
-        self.is_autoregressive = is_autoregressive
     
     def _split_into_heads(self, x):
         return jnp.reshape(x, [x.shape[0], x.shape[1], self.config['n_heads'], x.shape[2]//self.config['n_heads']])
@@ -45,7 +43,7 @@ class MultiHeadAttention(hk.Module):
         mask = jnp.triu(mask, k=1)
         return mask*-2**32
     
-    def __call__(self, x, y, pad_mask, training=False):
+    def __call__(self, x, y, pad_mask, training=False, is_autoregressive=False):
         
         queries = hk.Linear(output_size=self.config['d_model'])(y)
         
@@ -62,7 +60,7 @@ class MultiHeadAttention(hk.Module):
 
         attention_logits += jnp.reshape(mask*-2**32, [mask.shape[0],1,1,mask.shape[1]])
         
-        if self.is_autoregressive:
+        if is_autoregressive:
             attention_logits += self.get_attn_mask(y.shape[1])
 
         attention_weights = jax.nn.softmax(attention_logits, axis=-1)
@@ -109,19 +107,30 @@ class TransformerMLP(hk.Module):
 
 class TransformerFeaturizer(hk.Module):
     
-    def __init__(self, config, is_autoregressive=False):
+    def __init__(self, config):
         super().__init__()
         self.config = config
-        self.is_autoregressive = is_autoregressive
 
-    def __call__(self, token_ids, training=False):
-        x = Embedding(self.config)(token_ids, training=training)
+    def __call__(self, token_ids, lang_ids=None, training=False, is_autoregressive=False):
+        x = Embedding(self.config)(token_ids, lang_ids=lang_ids, training=training)
         
         mask = (jnp.bitwise_or(token_ids==self.config['pad_id'], 
                                token_ids==self.config['mask_id'])).astype(jnp.float32)
     
         for layer_num in range(self.config['n_layers']):
-            x = TransformerBlock(config, 
-                                 self.is_autoregressive)(x,mask,training)
+            x = TransformerBlock(config)(x,mask,
+                                         training=training,is_autoregressive=is_autoregressive)
         
         return x
+
+class LogitsTransformer(hk.Module):
+
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+
+    def __call__(self, token_ids, lang_ids=None, training=False, is_autoregressive=False):
+        x = TransformerFeaturizer(self.config)(token_ids, lang_ids, 
+                                               training=training, is_autoregressive=is_autoregressive)
+        logits = hk.Linear(output_size=self.config['vocab_size'])(x)
+        return logits

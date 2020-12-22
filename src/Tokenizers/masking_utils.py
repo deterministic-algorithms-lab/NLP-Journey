@@ -8,7 +8,6 @@ def mask_batch_mlm(key, config, batch_token_ids):
     Random replacement of tokens with mask or other tokens from vocabulary.
     batch_token_ids : numpy tensor of ints
     For MLM and TLM tasks. 
-    Use with logits[:,1:]
     """
     original_batch = batch_token_ids 
     
@@ -35,7 +34,7 @@ def mask_batch_mlm(key, config, batch_token_ids):
                                 random_words, 
                                 batch_token_ids)
     
-    return batch_token_ids, original_batch[:,1:]
+    return batch_token_ids, original_batch
 
 @jax.jit
 def mask_batch_clm(key, config, batch_token_ids):
