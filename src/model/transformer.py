@@ -42,7 +42,7 @@ class MultiHeadAttention(hk.Module):
     
     def get_attn_mask(self, seq_len):
         mask = jnp.ones([seq_len, seq_len])
-        mask = jnp.triu(mask)
+        mask = jnp.triu(mask, k=1)
         return mask*-2**32
     
     def __call__(self, x, y, pad_mask, training=False):

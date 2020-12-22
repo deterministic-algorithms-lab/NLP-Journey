@@ -22,7 +22,7 @@ class LM_Tokenizer:
         self.tokenizer.enable_truncation(self.config['max_length']-1)
 
         self.tokenizer.post_processor = TemplateProcessing(single = "<s> $A </s>",
-                                                           pair = "<s> $A </s> $B </s>",
+                                                           pair = "<s>:2 $A:0 </s>:2 $B:1 </s>:2",
                                                            special_tokens=[('<s>',1), ('</s>',2)])
 
     def decode_to_str(self, batch_text) :
