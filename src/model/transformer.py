@@ -9,7 +9,7 @@ class TransformerBlock(hk.Module):
         super().__init__()
         self.config = config
     
-    def __call__(self, x, mask, training = False, is_autoregressive=False):
+    def __call__(self, x, mask, training=False, is_autoregressive=False):
 
         attention_output = MultiHeadAttention(self.config)(x, x, mask,
                                                            training=training, is_autoregressive=is_autoregressive)
@@ -30,6 +30,41 @@ class TransformerBlock(hk.Module):
         
         return layer_output
 
+class TransformerDecoderBlock(hk.Module):
+
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+    
+    def __call__(self, y, tgt_mask, src_mask, x_embds, training=False):
+
+        attention_output = MultiHeadAttention(self.config)(y, y, tgt_mask,
+                                                           training=training, is_autoregressive=True)
+        
+        residual = attention_output+x
+
+        attention_output = hk.LayerNorm(axis=-1,
+                                        create_scale=True,
+                                        create_offset=True,)(residual)
+        
+        attention_output = MultiHeadAttention(self.config)(x_embds, y, src_mask,
+                                                           training=training, is_autoregressive=False)
+        
+        residual = attention_output+x
+
+        attention_output = hk.LayerNorm(axis=-1,
+                                        create_scale=True,
+                                        create_offset=True,)(residual)
+        
+        mlp_output = TransformerMLP(self.config)(attention_output, training=training)
+
+        output_residual = mlp_output+attention_output
+
+        layer_output = hk.LayerNorm(axis=-1,
+                                    create_scale=True,
+                                    create_offset=True,)(output_residual)
+        
+        return layer_output
 
 class MultiHeadAttention(hk.Module):
     def __init__(self, config):
@@ -111,16 +146,20 @@ class TransformerFeaturizer(hk.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
-
+    
+    def get_mask(self, token_ids):
+        return (jnp.bitwise_or(src_token_ids==self.config['pad_id'], 
+                                   src_token_ids==self.config['mask_id'])).astype(jnp.float32)
+    
     def __call__(self, token_ids, lang_ids=None, training=False, is_autoregressive=False):
+        
         x = Embedding(self.config)(token_ids, lang_ids=lang_ids, training=training)
         
-        mask = (jnp.bitwise_or(token_ids==self.config['pad_id'], 
-                               token_ids==self.config['mask_id'])).astype(jnp.float32)
-    
+        mask = self.get_mask(token_ids)
+
         for layer_num in range(self.config['n_layers']):
-            x = TransformerBlock(self.config)(x,mask,
-                                         training=training,is_autoregressive=is_autoregressive)
+            x = TransformerBlock(self.config)(x, mask,
+                                         training=training, is_autoregressive=is_autoregressive)
         
         return x
 
@@ -134,4 +173,30 @@ class LogitsTransformer(hk.Module):
         x = TransformerFeaturizer(self.config)(token_ids, lang_ids, 
                                                training=training, is_autoregressive=is_autoregressive)
         logits = hk.Linear(output_size=self.config['vocab_size'])(x)
+        return logits
+
+class VaswaniTransformer(hk.Module):
+    
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+    
+    def get_mask(self, token_ids):
+        return (jnp.bitwise_or(src_token_ids==self.config['pad_id'], 
+                                   src_token_ids==self.config['mask_id'])).astype(jnp.float32)
+        
+    def __call__(self, src_token_ids, tgt_token_ids, src_lang_ids=None, tgt_lang_ids=None, training=False):
+        
+        x_embds = TransformerFeaturizer(self.config)(src_token_ids, lang_ids=src_lang_ids,
+                                                    training=True)
+        
+        src_mask = self.get_mask(src_token_ids)
+        tgt_mask = self.get_mask(tgt_token_ids)
+
+        y = Embedding(self.config)(tgt_token_ids, lang_ids=tgt_lang_ids, training=training)
+
+        tgt_features = TransformerDecoderBlock(self.config)(y, tgt_mask, src_mask, x_embds, training=training)
+
+        logits = hk.Linear(output_size=self.config['tgt_vocab_size'])(tgt_features)
+
         return logits
