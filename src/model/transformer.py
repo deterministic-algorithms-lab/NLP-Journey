@@ -41,16 +41,16 @@ class TransformerDecoderBlock(hk.Module):
         attention_output = MultiHeadAttention(self.config)(y, y, tgt_mask,
                                                            training=training, is_autoregressive=True)
         
-        residual = attention_output+x
+        residual = attention_output+y
 
-        attention_output = hk.LayerNorm(axis=-1,
-                                        create_scale=True,
-                                        create_offset=True,)(residual)
+        self_attention_output = hk.LayerNorm(axis=-1,
+                                             create_scale=True,
+                                             create_offset=True,)(residual)
         
-        attention_output = MultiHeadAttention(self.config)(x_embds, y, src_mask,
+        attention_output = MultiHeadAttention(self.config)(x_embds, self_attention_output, src_mask,
                                                            training=training, is_autoregressive=False)
         
-        residual = attention_output+x
+        residual = attention_output+self_attention_output
 
         attention_output = hk.LayerNorm(axis=-1,
                                         create_scale=True,
