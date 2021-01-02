@@ -148,8 +148,8 @@ class TransformerFeaturizer(hk.Module):
         self.config = config
     
     def get_mask(self, token_ids):
-        return (jnp.bitwise_or(src_token_ids==self.config['pad_id'], 
-                                   src_token_ids==self.config['mask_id'])).astype(jnp.float32)
+        return (jnp.bitwise_or(token_ids==self.config['pad_id'], 
+                               token_ids==self.config['mask_id'])).astype(jnp.float32)
     
     def __call__(self, token_ids, lang_ids=None, training=False, is_autoregressive=False):
         
@@ -182,8 +182,8 @@ class VaswaniTransformer(hk.Module):
         self.config = config
     
     def get_mask(self, token_ids):
-        return (jnp.bitwise_or(src_token_ids==self.config['pad_id'], 
-                                   src_token_ids==self.config['mask_id'])).astype(jnp.float32)
+        return (jnp.bitwise_or(token_ids==self.config['pad_id'], 
+                               token_ids==self.config['mask_id'])).astype(jnp.float32)
         
     def __call__(self, src_token_ids, tgt_token_ids, src_lang_ids=None, tgt_lang_ids=None, training=False):
         
