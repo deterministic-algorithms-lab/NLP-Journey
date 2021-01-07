@@ -13,6 +13,6 @@ def greedy(key, pure_logits_fn, max_length, task, params, initial_token_ids):
 
         predictions = jnp.argmax(logits[:,i,:], axis=-1)
     
-        token_ids = jax.ops.index_update(token_ids, jax.ops.index[:,i],
-                                     predictions)
+        token_ids = jax.ops.index_update(token_ids, jax.ops.index[:,i+1],
+                                         predictions)
     return token_ids
